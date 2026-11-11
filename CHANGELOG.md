@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-11
+
+### Added
+
+- YAML config loader with named field errors for checks, alerts and status page settings.
+- HTTP and TCP check functions with injectable transports.
+- Incident state machine with failure/recovery thresholds and out-of-order handling.
+- SQLite storage for results, incidents and per-check state.
+- Telegram and webhook alerts on incident open/resolve (tokens from the environment).
+- Static status page generator and CLI (`uptime-lite check`, `uptime-lite status-page`).
+- Resource usage notes for 20 fake checks.
+- GitHub Pages landing with an example status snapshot.
+- QA notes, architecture ADRs and community/CI scaffolding.
+
+## [0.0.1] - 2026-11-11
+
 ### Added
 
 - Project scaffold: packaging, lint, type-check and test configuration.
-- YAML config loader that validates every check and reports errors naming the check and field.
-- HTTP and TCP check functions with injectable transports, timeouts and expected-status handling.
-- Incident state machine with failure and recovery thresholds, an injected clock, and handling of out-of-order results.
-- SQLite storage for check results, incidents and per-check state, so streaks survive a restart.
-- Example config in `examples/config.example.yaml`.

@@ -61,6 +61,44 @@ def test_unknown_top_level_key() -> None:
     assert errors == ["unknown top-level key 'chekcs'"]
 
 
+def test_alerts_and_status_page_parse() -> None:
+    config = parse_config(
+        """
+checks:
+  - {name: a, type: http, target: 'https://example.com'}
+alerts:
+  telegram:
+    chat_id: "99"
+  webhook:
+    url: https://hooks.example.com/h
+    require_bearer: true
+status_page:
+  title: Ops Board
+"""
+    )
+    assert config.alerts is not None
+    assert config.alerts.telegram is not None
+    assert config.alerts.telegram.chat_id == "99"
+    assert config.alerts.webhook is not None
+    assert config.alerts.webhook.require_bearer is True
+    assert config.status_page is not None
+    assert config.status_page.title == "Ops Board"
+
+
+def test_telegram_token_rejected_in_yaml() -> None:
+    errors = errors_for(
+        """
+checks:
+  - {name: a, type: http, target: 'https://example.com'}
+alerts:
+  telegram:
+    chat_id: "1"
+    bot_token: secret
+"""
+    )
+    assert any("TELEGRAM_BOT_TOKEN" in e for e in errors)
+
+
 @pytest.mark.parametrize("text", ["checks: []\n", "checks: {}\n", "other: 1\n"])
 def test_checks_must_be_non_empty_list(text: str) -> None:
     assert any("non-empty list" in e for e in errors_for(text))

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from uptime_lite.checks import CheckResult
-from uptime_lite.config import CheckConfig
+from uptime_lite.alerts import Alerter
+from uptime_lite.checks import CheckResult, run_check
+from uptime_lite.config import CheckConfig, Config
 from uptime_lite.incidents import Transition, TransitionKind, evaluate
 from uptime_lite.storage import Storage
 
@@ -28,3 +29,30 @@ def process_result(storage: Storage, check: CheckConfig, result: CheckResult) ->
         else:
             storage.resolve_incident(check.name, transition.at)
         return transition
+
+
+def handle_result(
+    storage: Storage,
+    check: CheckConfig,
+    result: CheckResult,
+    alerter: Alerter | None = None,
+) -> Transition | None:
+    """Process a result and notify alert channels when an incident opens or resolves."""
+    transition = process_result(storage, check, result)
+    if transition is not None and alerter is not None:
+        alerter.notify(check.name, transition, result.error)
+    return transition
+
+
+def run_once(
+    config: Config,
+    storage: Storage,
+    alerter: Alerter | None = None,
+) -> list[tuple[CheckConfig, CheckResult, Transition | None]]:
+    """Run every check once, persist results, and fire alerts on transitions."""
+    outcomes: list[tuple[CheckConfig, CheckResult, Transition | None]] = []
+    for check in config.checks:
+        result = run_check(check)
+        transition = handle_result(storage, check, result, alerter)
+        outcomes.append((check, result, transition))
+    return outcomes
