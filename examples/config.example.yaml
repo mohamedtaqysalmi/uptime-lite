@@ -1,0 +1,29 @@
+# All targets below are placeholders: example.com and the documentation
+# address ranges (RFC 5737) never belong to a real service.
+checks:
+  - name: example-website
+    type: http
+    target: https://example.com/
+    interval: 60            # seconds between checks
+    timeout: 10             # seconds, must not exceed interval
+    failure_threshold: 3    # consecutive failures before an incident opens
+    recovery_threshold: 2   # consecutive successes before it resolves
+    expected_status: [200]  # optional, default is any 2xx
+
+  - name: example-api-health
+    type: http
+    target: https://example.com/api/health
+    interval: 30
+    timeout: 5
+
+  - name: example-database
+    type: tcp
+    target: 192.0.2.10:5432
+    interval: 60
+    timeout: 3
+    failure_threshold: 2
+
+  - name: example-ssh
+    type: tcp
+    target: 198.51.100.7:22
+    interval: 120
