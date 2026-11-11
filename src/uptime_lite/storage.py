@@ -185,16 +185,23 @@ class Storage:
             query += " WHERE check_name = ?"
             params = (check_name,)
         rows = self._conn.execute(query + " ORDER BY started_at, id", params).fetchall()
-        return [
-            Incident(
-                id=r["id"],
-                check_name=r["check_name"],
-                started_at=_require(_load(r["started_at"])),
-                resolved_at=_load(r["resolved_at"]),
-                error=r["error"],
-            )
-            for r in rows
-        ]
+        return [_incident_from_row(r) for r in rows]
+
+    def open_incidents(self) -> list[Incident]:
+        rows = self._conn.execute(
+            "SELECT * FROM incidents WHERE resolved_at IS NULL ORDER BY started_at, id"
+        ).fetchall()
+        return [_incident_from_row(r) for r in rows]
+
+
+def _incident_from_row(row: sqlite3.Row) -> Incident:
+    return Incident(
+        id=row["id"],
+        check_name=row["check_name"],
+        started_at=_require(_load(row["started_at"])),
+        resolved_at=_load(row["resolved_at"]),
+        error=row["error"],
+    )
 
 
 def _require(value: datetime | None) -> datetime:

@@ -8,4 +8,4 @@ This is a solo-maintained project, so expect an initial reply within a few days.
 
 ## Supported versions
 
-There are no releases yet. Once there are, only the latest release will receive security fixes.
+Only the latest release receives security fixes. At tag time that is v0.1.0.

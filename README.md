@@ -2,35 +2,64 @@
 
 Self-hosted uptime monitor with debounced incident detection and a static public status page.
 
-Status: early. The config loader, the check functions, the incident state machine and the SQLite history exist and are tested. There is no scheduler, so nothing runs on its own yet, and nothing is usable as a monitor today.
+Site: [mohamedtaqysalmi.github.io/uptime-lite](https://mohamedtaqysalmi.github.io/uptime-lite/)
 
-## Config
+I built this for small deployments where one failed probe should not page me, but a real outage should open an incident, alert Telegram (or a webhook), and show up on a public HTML page I can host anywhere.
 
-Checks are defined in YAML and validated up front. Every problem found is reported at once and names the check and the field, for example `check 'db' (checks[1]): field 'target': expected host:port, got 'not-a-target'`.
+## Demo
 
-```yaml
-checks:
-  - name: example-website
-    type: http
-    target: https://example.com/
-    interval: 60            # seconds between checks
-    timeout: 10             # seconds, must not exceed interval
-    failure_threshold: 3    # consecutive failures before an incident opens
-    recovery_threshold: 2   # consecutive successes before it resolves
-    expected_status: [200]  # optional, default is any 2xx
+Record a 20–40 s terminal GIF for the README (to do):
 
-  - name: example-database
-    type: tcp
-    target: 192.0.2.10:5432
-    interval: 60
-    timeout: 3
+1. Copy `examples/config.example.yaml` to `config.yaml` and point one HTTP check at a URL you control.
+2. Run `uptime-lite check -c config.yaml -d uptime.db --no-alerts` a few times.
+3. Run `uptime-lite status-page -c config.yaml -d uptime.db -o status` and open `status/index.html`.
+4. Capture with [ScreenToGif](https://www.screentogif.com/) or similar; save as `docs/demo.gif` and link it here.
+
+Until that lands, the Pages site embeds an example status snapshot.
+
+## Quickstart
+
+Requires Python 3.11 or newer.
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate        # Windows; on Linux/macOS: source .venv/bin/activate
+pip install -e ".[dev]"
+copy examples\config.example.yaml config.yaml   # or: cp examples/config.example.yaml config.yaml
 ```
 
-`name`, `type` and `target` are required. The rest default to an interval of 60 s, a timeout of 10 s, a failure threshold of 3 and a recovery threshold of 2. The full example is in [examples/config.example.yaml](examples/config.example.yaml); its targets are placeholders (`example.com` and the RFC 5737 documentation ranges).
+Run every check once and write a status page:
+
+```bash
+uptime-lite check -c config.yaml -d uptime.db --no-alerts
+uptime-lite status-page -c config.yaml -d uptime.db -o status
+```
+
+Set `TELEGRAM_BOT_TOKEN` (and optionally `WEBHOOK_BEARER_TOKEN`) before dropping `--no-alerts`. Tokens never go in YAML.
+
+## Configuration
+
+Checks are defined in YAML and validated up front. Every problem found is reported at once and names the check and the field.
+
+| Field | Required | Default | Notes |
+| --- | --- | --- | --- |
+| `checks[].name` | yes | — | Unique |
+| `checks[].type` | yes | — | `http` or `tcp` |
+| `checks[].target` | yes | — | URL or `host:port` |
+| `checks[].interval` | no | 60 | Seconds (documented for operators; scheduler is not in v0.1.0) |
+| `checks[].timeout` | no | 10 | Must not exceed `interval` |
+| `checks[].failure_threshold` | no | 3 | Consecutive failures to open |
+| `checks[].recovery_threshold` | no | 2 | Consecutive successes to resolve |
+| `checks[].expected_status` | no | any 2xx | HTTP only |
+| `alerts.telegram.chat_id` | no | — | Token from `TELEGRAM_BOT_TOKEN` |
+| `alerts.webhook.url` | no | — | Optional bearer from `WEBHOOK_BEARER_TOKEN` |
+| `status_page.title` | no | `Status` | Used in generated HTML |
+
+Full example: [examples/config.example.yaml](examples/config.example.yaml).
 
 ## How the debounce works
 
-A single failed request is usually noise, so a check does not go down on the first failure. It goes down after `failure_threshold` failures in a row and comes back after `recovery_threshold` successes in a row. A result of the opposite kind resets the streak, so a check that flaps between failing and passing never reaches either threshold and produces no alerts.
+A single failed request is usually noise, so a check does not go down on the first failure. It goes down after `failure_threshold` failures in a row and comes back after `recovery_threshold` successes in a row. A result of the opposite kind resets the streak.
 
 ```mermaid
 stateDiagram-v2
@@ -43,39 +72,59 @@ stateDiagram-v2
     Down --> Up: success number M in a row (incident resolves)
 ```
 
-The logic is a pure function in [src/uptime_lite/incidents.py](src/uptime_lite/incidents.py): no I/O, and the timestamp of each result is passed in. Results timestamped before the last applied one are ignored, so a slow check that finishes late cannot reopen or close an incident. The state is stored in SQLite after each result, so a restart continues the current streak or incident instead of starting over.
+Logic lives in [src/uptime_lite/incidents.py](src/uptime_lite/incidents.py). State is stored in SQLite so a restart continues the current streak.
 
-## What is not built yet
+## Alerts
 
-- The scheduler loop that runs checks on their intervals
-- Telegram and webhook alerts
-- The generated static status page
-- Docker files and a CLI entry point
+On `opened` / `resolved` transitions, `uptime-lite check` can notify:
 
-## Development
+- Telegram `sendMessage` using `TELEGRAM_BOT_TOKEN` and `alerts.telegram.chat_id`
+- A JSON webhook POST (`incident.opened` / `incident.resolved`)
 
-Requires Python 3.11 or newer.
+Alert delivery failures are logged and do not crash the check run.
+
+## Status page
 
 ```bash
-python -m venv .venv
-.venv/Scripts/activate        # Windows; on Linux/macOS: source .venv/bin/activate
-pip install -e ".[dev]"
-pre-commit install
+uptime-lite status-page -c config.yaml -d uptime.db -o status
 ```
 
-Run the tests (coverage must stay at or above 85%):
+Writes `status/index.html` from current check state and recent incidents. Publish that folder (or regenerate into your Pages tree).
+
+## Resource usage
+
+Measured for 20 fake checks (stub transports + in-memory SQLite) on 2026-11-11: about 0.05 s wall, 0.016 s CPU, 4.4 KiB peak traced allocations. Real network RTT dominates in production. Details: [docs/resource-usage.md](docs/resource-usage.md).
+
+## Testing
 
 ```bash
 pytest
-```
-
-Lint and type checks:
-
-```bash
 ruff check .
 ruff format --check .
 mypy
 ```
+
+Coverage must stay at or above 85%. See [QA.md](QA.md) and [TEST_REPORT.md](TEST_REPORT.md).
+
+## Security notes
+
+- Do not put bot tokens or webhook bearer tokens in YAML or the repo.
+- Status pages are public by design; do not put internal hostnames you care about hiding.
+- Private vulnerability reports: [SECURITY.md](SECURITY.md).
+
+## Limitations
+
+- No built-in interval scheduler yet; drive `check` from cron or Task Scheduler.
+- Single-node SQLite only.
+- Pages demo status is a snapshot, not a live monitor feed.
+
+## Roadmap
+
+Tracked as GitHub issues under milestone v0.2.0 (scheduler loop, Docker image, richer status history).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

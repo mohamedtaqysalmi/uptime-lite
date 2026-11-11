@@ -7,12 +7,15 @@ from urllib.parse import urlsplit
 
 import yaml
 
+from uptime_lite.alerts import AlertsConfig, TelegramConfig, WebhookConfig
+
 CheckType = Literal["http", "tcp"]
 
 DEFAULT_INTERVAL = 60
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_FAILURE_THRESHOLD = 3
 DEFAULT_RECOVERY_THRESHOLD = 2
+DEFAULT_STATUS_TITLE = "Status"
 
 _CHECK_KEYS = {
     "name",
@@ -24,6 +27,8 @@ _CHECK_KEYS = {
     "recovery_threshold",
     "expected_status",
 }
+
+_TOP_LEVEL_KEYS = {"checks", "alerts", "status_page"}
 
 
 class ConfigError(Exception):
@@ -52,8 +57,15 @@ class CheckConfig:
 
 
 @dataclass(frozen=True)
+class StatusPageConfig:
+    title: str = DEFAULT_STATUS_TITLE
+
+
+@dataclass(frozen=True)
 class Config:
     checks: tuple[CheckConfig, ...]
+    alerts: AlertsConfig | None = None
+    status_page: StatusPageConfig | None = None
 
 
 def split_host_port(target: str) -> tuple[str, int]:
@@ -91,7 +103,7 @@ def validate_config(data: Any) -> Config:
         raise ConfigError(["top level must be a mapping with a 'checks' list"])
     errors: list[str] = []
     for key in data:
-        if key != "checks":
+        if key not in _TOP_LEVEL_KEYS:
             errors.append(f"unknown top-level key {key!r}")
     raw_checks = data.get("checks")
     if not isinstance(raw_checks, list) or not raw_checks:
@@ -112,9 +124,15 @@ def validate_config(data: Any) -> Config:
         else:
             seen[check.name] = index
         checks.append(check)
+
+    alerts = _validate_alerts(data.get("alerts"), errors) if "alerts" in data else None
+    status_page = (
+        _validate_status_page(data.get("status_page"), errors) if "status_page" in data else None
+    )
+
     if errors:
         raise ConfigError(errors)
-    return Config(checks=tuple(checks))
+    return Config(checks=tuple(checks), alerts=alerts, status_page=status_page)
 
 
 def _label(index: int, raw: Any) -> str:
@@ -207,6 +225,101 @@ def _validate_check(index: int, raw: Any, errors: list[str]) -> CheckConfig | No
         recovery_threshold=recovery_threshold,
         expected_status=expected_status,
     )
+
+
+def _validate_alerts(raw: Any, errors: list[str]) -> AlertsConfig | None:
+    if raw is None:
+        return AlertsConfig()
+    if not isinstance(raw, dict):
+        errors.append("alerts: must be a mapping")
+        return None
+    for key in raw:
+        if key not in ("telegram", "webhook"):
+            errors.append(f"alerts: unknown field {key!r}")
+
+    telegram = None
+    if "telegram" in raw:
+        telegram = _validate_telegram(raw["telegram"], errors)
+
+    webhook = None
+    if "webhook" in raw:
+        webhook = _validate_webhook(raw["webhook"], errors)
+
+    if telegram is None and webhook is None and ("telegram" in raw or "webhook" in raw):
+        return None
+    return AlertsConfig(telegram=telegram, webhook=webhook)
+
+
+def _validate_telegram(raw: Any, errors: list[str]) -> TelegramConfig | None:
+    if not isinstance(raw, dict):
+        errors.append("alerts.telegram: must be a mapping")
+        return None
+    if "bot_token" in raw or "token" in raw:
+        errors.append(
+            "alerts.telegram: do not put the bot token in YAML; set TELEGRAM_BOT_TOKEN instead"
+        )
+    for key in raw:
+        if key not in ("chat_id", "api_base", "bot_token", "token"):
+            errors.append(f"alerts.telegram: unknown field {key!r}")
+    chat_id = raw.get("chat_id")
+    if isinstance(chat_id, int) and not isinstance(chat_id, bool):
+        chat_id = str(chat_id)
+    if not isinstance(chat_id, str) or not chat_id.strip():
+        errors.append("alerts.telegram: field 'chat_id': required, must be a non-empty string")
+        return None
+    if "bot_token" in raw or "token" in raw:
+        return None
+    api_base = raw.get("api_base", "https://api.telegram.org")
+    if not isinstance(api_base, str) or not api_base.startswith("https://"):
+        errors.append(f"alerts.telegram: field 'api_base': must be an https URL, got {api_base!r}")
+        return None
+    return TelegramConfig(chat_id=chat_id.strip(), api_base=api_base.rstrip("/"))
+
+
+def _validate_webhook(raw: Any, errors: list[str]) -> WebhookConfig | None:
+    if not isinstance(raw, dict):
+        errors.append("alerts.webhook: must be a mapping")
+        return None
+    for key in raw:
+        if key not in ("url", "require_bearer", "timeout"):
+            errors.append(f"alerts.webhook: unknown field {key!r}")
+    url = raw.get("url")
+    if not isinstance(url, str) or not url.strip():
+        errors.append("alerts.webhook: field 'url': required, must be a non-empty string")
+        return None
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        errors.append(f"alerts.webhook: field 'url': must be an http(s) URL, got {url!r}")
+        return None
+    require_bearer = raw.get("require_bearer", False)
+    if not isinstance(require_bearer, bool):
+        errors.append(
+            f"alerts.webhook: field 'require_bearer': must be a boolean, got {require_bearer!r}"
+        )
+        return None
+    timeout = raw.get("timeout", 10.0)
+    if isinstance(timeout, bool) or not isinstance(timeout, int | float) or timeout <= 0:
+        errors.append(
+            f"alerts.webhook: field 'timeout': must be a positive number, got {timeout!r}"
+        )
+        return None
+    return WebhookConfig(url=url.strip(), require_bearer=require_bearer, timeout=float(timeout))
+
+
+def _validate_status_page(raw: Any, errors: list[str]) -> StatusPageConfig | None:
+    if raw is None:
+        return StatusPageConfig()
+    if not isinstance(raw, dict):
+        errors.append("status_page: must be a mapping")
+        return None
+    for key in raw:
+        if key != "title":
+            errors.append(f"status_page: unknown field {key!r}")
+    title = raw.get("title", DEFAULT_STATUS_TITLE)
+    if not isinstance(title, str) or not title.strip():
+        errors.append("status_page: field 'title': must be a non-empty string")
+        return None
+    return StatusPageConfig(title=title.strip())
 
 
 def _positive_int(raw: dict[str, Any], field: str, default: int, problem: Any) -> int | None:
