@@ -34,5 +34,7 @@ jobs:
         run: mypy
       - name: Tests
         run: pytest
+      - name: Demo script tests
+        run: node --test tests/js/debounce.test.mjs
       - name: Build
         run: python -m build

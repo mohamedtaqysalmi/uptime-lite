@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from uptime_lite.config import CheckConfig, Config, StatusPageConfig
@@ -40,120 +40,112 @@ def collect_snapshots(config: Config, storage: Storage, history: int = 5) -> lis
     return snapshots
 
 
+_CSS = """
+:root {
+  --bg: #ffffff; --surface: #f8f9fa; --ink: #202122; --muted: #54595d;
+  --line: #a2a9b1; --line-soft: #c8ccd1; --ok: #14633a; --bad: #b32424;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: Georgia, "Times New Roman", Times, serif;
+  --mono: ui-monospace, Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101418; --surface: #1b2026; --ink: #eaecf0; --muted: #a2a9b1;
+    --line: #54595d; --line-soft: #3a4046; --ok: #7fd1a0; --bad: #ff9a8f;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 1rem/1.6 var(--sans); overflow-wrap: break-word; }
+main { max-width: 52rem; margin: 0 auto; padding: 1.25rem 1rem 2.5rem; }
+h1, h2 { margin: 0; font-family: var(--serif); font-weight: 400; line-height: 1.3; border-bottom: 1px solid var(--line); }
+h1 { font-size: 2rem; padding-bottom: 0.2rem; }
+h2 { margin-top: 1.75rem; font-size: 1.5rem; padding-bottom: 0.15rem; }
+.meta { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.875rem; }
+.banner { margin-top: 1rem; padding: 0.6rem 0.75rem; border: 1px solid var(--line-soft); border-left: 4px solid var(--muted); background: var(--surface); }
+.banner.up { border-left-color: var(--ok); }
+.banner.down { border-left-color: var(--bad); }
+.banner strong { display: block; }
+.banner span { color: var(--muted); font-size: 0.875rem; }
+.table-wrap { margin-top: 0.75rem; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th, td { padding: 0.35rem 0.6rem; text-align: left; vertical-align: top; border: 1px solid var(--line); }
+th { background: var(--surface); white-space: nowrap; }
+.type { display: block; color: var(--muted); font: 0.8rem var(--mono); }
+.pill { font-weight: 700; white-space: nowrap; }
+.pill.up { color: var(--ok); }
+.pill.down { color: var(--bad); }
+.pill.unknown { color: var(--muted); }
+ul { margin: 0.75rem 0 0; padding-left: 1.4rem; }
+li + li { margin-top: 0.5rem; }
+li .detail { display: block; color: var(--muted); font-size: 0.875rem; }
+code { font: 0.875em var(--mono); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 2px; padding: 0 0.25em; }
+.empty { margin: 0.75rem 0 0; color: var(--muted); }
+footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.875rem; }
+"""
+
+
 def render_html(
     snapshots: list[CheckSnapshot],
     page: StatusPageConfig,
     *,
     generated_at: datetime,
 ) -> str:
-    overall = (
-        Status.UP
-        if all(s.status is Status.UP for s in snapshots)
-        else Status.DOWN
-        if any(s.status is Status.DOWN for s in snapshots)
-        else Status.UP
-    )
-    rows = "\n".join(_check_row(s) for s in snapshots)
-    incident_rows = "\n".join(_incident_row(inc) for s in snapshots for inc in s.recent_incidents)
-    if not incident_rows:
-        incident_rows = '<tr><td colspan="4">No incidents recorded yet.</td></tr>'
+    kinds = [_kind(s) for s in snapshots]
+    down = kinds.count("down")
+    up = kinds.count("up")
+    if down:
+        overall, headline = "down", "Service disruption"
+        sub = f"{down} of {len(kinds)} services down"
+    elif up:
+        overall, headline = "up", "All systems operational"
+        sub = f"{up} of {len(kinds)} services reporting"
+    else:
+        overall, headline = "unknown", "Waiting for the first check"
+        sub = "No results recorded yet"
+    services = "\n".join(_check_row(s) for s in snapshots)
+    incidents = [inc for s in snapshots for inc in s.recent_incidents]
+    incidents.sort(key=lambda i: i.started_at, reverse=True)
+    if incidents:
+        incident_block = "<ul>\n" + "\n".join(_incident_row(i) for i in incidents) + "\n</ul>"
+    else:
+        incident_block = '<p class="empty">No incidents recorded.</p>'
     title = html.escape(page.title)
-    overall_label = "All systems operational" if overall is Status.UP else "Service disruption"
-    overall_class = "up" if overall is Status.UP else "down"
-    generated = html.escape(_fmt(generated_at))
     return f"""<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{title}</title>
-  <meta name="description" content="Public status for {title}" />
-  <style>
-    :root {{
-      --bg: #0f1419;
-      --panel: #171e26;
-      --text: #e7eef5;
-      --muted: #8b9aab;
-      --up: #2fbf71;
-      --down: #e35d6a;
-      --line: #2a3542;
-      --accent: #3db8a8;
-      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-    }}
-    @media (prefers-color-scheme: light) {{
-      :root {{
-        --bg: #f4f7fa;
-        --panel: #ffffff;
-        --text: #14202b;
-        --muted: #5c6b7a;
-        --line: #d5dee7;
-      }}
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }}
-    main {{ max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }}
-    h1 {{ font-size: 1.75rem; margin: 0 0 0.5rem; letter-spacing: -0.02em; }}
-    .banner {{
-      display: flex; align-items: center; gap: 0.75rem;
-      padding: 1rem 1.1rem; border-radius: 0.5rem;
-      background: var(--panel); border: 1px solid var(--line); margin: 1.25rem 0 2rem;
-    }}
-    .dot {{ width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--muted); }}
-    .dot.up {{ background: var(--up); }}
-    .dot.down {{ background: var(--down); }}
-    table {{ width: 100%; border-collapse: collapse; background: var(--panel);
-      border: 1px solid var(--line); border-radius: 0.5rem; overflow: hidden; }}
-    th, td {{ text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--line);
-      vertical-align: top; }}
-    th {{ color: var(--muted); font-weight: 500; font-size: 0.85rem; }}
-    tr:last-child td {{ border-bottom: none; }}
-    .status {{
-      font-weight: 600; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.04em;
-    }}
-    .status.up {{ color: var(--up); }}
-    .status.down {{ color: var(--down); }}
-    .muted {{ color: var(--muted); font-size: 0.9rem; }}
-    h2 {{ font-size: 1.1rem; margin: 2.25rem 0 0.75rem; }}
-    footer {{ margin-top: 2rem; color: var(--muted); font-size: 0.85rem; }}
-    code {{ font-family: "IBM Plex Mono", Consolas, monospace; font-size: 0.85em; }}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+<meta name="description" content="Current status and recent incidents for {title}">
+<style>{_CSS}</style>
 </head>
 <body>
-  <main>
-    <h1>{title}</h1>
-    <p class="muted">Generated {generated}</p>
-    <div class="banner" role="status">
-      <span class="dot {overall_class}" aria-hidden="true"></span>
-      <strong>{overall_label}</strong>
-    </div>
-    <h2>Services</h2>
-    <table>
-      <thead>
-        <tr><th>Name</th><th>Type</th><th>Status</th><th>Last check</th></tr>
-      </thead>
-      <tbody>
-{rows}
-      </tbody>
-    </table>
-    <h2>Recent incidents</h2>
-    <table>
-      <thead>
-        <tr><th>Service</th><th>Started</th><th>Resolved</th><th>Detail</th></tr>
-      </thead>
-      <tbody>
-{incident_rows}
-      </tbody>
-    </table>
-    <footer>
-      Static page from <code>uptime-lite</code>.
-      Refresh by regenerating after checks run.
-    </footer>
-  </main>
+<main>
+<header>
+<h1>{title}</h1>
+<p class="meta">Generated {html.escape(_fmt(generated_at))}</p>
+</header>
+<div class="banner {overall}" role="status">
+<div><strong>{headline}</strong><span>{html.escape(sub)}</span></div>
+</div>
+<section aria-labelledby="services-title">
+<h2 id="services-title">Services</h2>
+<div class="table-wrap">
+<table>
+<thead><tr><th scope="col">Service</th><th scope="col">Status</th><th scope="col">Last check</th></tr></thead>
+<tbody>
+{services}
+</tbody>
+</table>
+</div>
+</section>
+<section aria-labelledby="incidents-title">
+<h2 id="incidents-title">Recent incidents</h2>
+{incident_block}
+</section>
+<footer>Generated by <code>uptime-lite</code>. Times are UTC.</footer>
+</main>
 </body>
 </html>
 """
@@ -177,31 +169,55 @@ def write_status_page(
     return path
 
 
+_LABELS = {"up": "Up", "down": "Down", "unknown": "No data yet"}
+
+
+def _kind(snapshot: CheckSnapshot) -> str:
+    if snapshot.last_at is None:
+        return "unknown"
+    return snapshot.status.value
+
+
 def _check_row(snapshot: CheckSnapshot) -> str:
-    status_class = snapshot.status.value
-    last = _fmt(snapshot.last_at) if snapshot.last_at else "—"
+    kind = _kind(snapshot)
+    last = _fmt(snapshot.last_at) if snapshot.last_at else "never"
     return (
         "<tr>"
-        f"<td>{html.escape(snapshot.check.name)}</td>"
-        f"<td><code>{html.escape(snapshot.check.type)}</code></td>"
-        f'<td class="status {status_class}">{html.escape(snapshot.status.value)}</td>'
-        f'<td class="muted">{html.escape(last)}</td>'
+        f"<td>{html.escape(snapshot.check.name)}"
+        f'<span class="type">{html.escape(snapshot.check.type)}</span></td>'
+        f'<td><span class="pill {kind}">{_LABELS[kind]}</span></td>'
+        f"<td>{html.escape(last)}</td>"
         "</tr>"
     )
 
 
 def _incident_row(incident: Incident) -> str:
-    resolved = _fmt(incident.resolved_at) if incident.resolved_at else "open"
-    detail = html.escape(incident.error or "—")
+    if incident.resolved_at is None:
+        state, kind = "Ongoing", "down"
+        timing = f"Started {_fmt(incident.started_at)}"
+    else:
+        state, kind = "Resolved", "up"
+        length = _duration(incident.resolved_at - incident.started_at)
+        timing = f"{_fmt(incident.started_at)} to {_fmt(incident.resolved_at)} ({length})"
+    error = f"<code>{html.escape(incident.error)}</code>" if incident.error else ""
     return (
-        "<tr>"
-        f"<td>{html.escape(incident.check_name)}</td>"
-        f'<td class="muted">{html.escape(_fmt(incident.started_at))}</td>'
-        f'<td class="muted">{html.escape(resolved)}</td>'
-        f"<td>{detail}</td>"
-        "</tr>"
+        "<li>"
+        f"<strong>{html.escape(incident.check_name)}</strong> "
+        f'<span class="pill {kind}">{state}</span>'
+        f'<span class="detail">{html.escape(timing)} {error}</span>'
+        "</li>"
     )
 
 
+def _duration(delta: timedelta) -> str:
+    minutes = max(int(delta.total_seconds() // 60), 0)
+    if minutes < 1:
+        return "under a minute"
+    hours, minutes = divmod(minutes, 60)
+    if hours == 0:
+        return f"{minutes} min"
+    return f"{hours} h {minutes} min" if minutes else f"{hours} h"
+
+
 def _fmt(value: datetime) -> str:
-    return value.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")

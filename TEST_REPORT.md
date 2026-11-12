@@ -20,8 +20,9 @@ pytest
 | ruff check | pass |
 | ruff format --check | pass |
 | mypy (strict) | pass |
-| pytest | **147 passed** |
-| Coverage (branch) | **88.12%** (fail_under 85) |
+| pytest | **160 passed** |
+| node --test tests/js/debounce.test.mjs | **10 passed** |
+| Coverage (branch) | **88.20%** (fail_under 85) |
 
 ## What is covered
 
@@ -30,7 +31,7 @@ pytest
 - Incident state machine with fake clock, flap patterns and stale timestamps.
 - SQLite results, state, open/resolve incidents, rollback.
 - Telegram/webhook alerter with injectable poster (missing token, HTTP errors, bearer).
-- Status page render/write and CLI `status-page` / bad-config paths.
+- Status page render/write (including HTML escaping), shared debounce cases (`site/debounce-cases.json`, also run by the demo's JavaScript port) and CLI `status-page` / bad-config paths.
 - `handle_result` notifying on open transitions.
 
 ## What is not covered

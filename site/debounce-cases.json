@@ -1,0 +1,65 @@
+{
+  "note": "Shared by tests/test_debounce_cases.py (Python state machine) and tests/js/debounce.test.mjs (the demo's JavaScript port). In a pattern, '.' is a passing check and 'x' a failing one. Event indexes are 0-based positions in the pattern.",
+  "cases": [
+    {
+      "name": "opens on exactly the Nth failure",
+      "failure_threshold": 3, "recovery_threshold": 2, "pattern": "xxx",
+      "events": [[2, "opened"]],
+      "final": {"status": "down", "failures": 3, "successes": 0}
+    },
+    {
+      "name": "one failure short of the threshold",
+      "failure_threshold": 3, "recovery_threshold": 2, "pattern": "xx",
+      "events": [],
+      "final": {"status": "up", "failures": 2, "successes": 0}
+    },
+    {
+      "name": "flapping below the threshold never alerts",
+      "failure_threshold": 3, "recovery_threshold": 2, "pattern": "xx.xx.xx.",
+      "events": [],
+      "final": {"status": "up", "failures": 0, "successes": 0}
+    },
+    {
+      "name": "recovers on exactly the Mth success",
+      "failure_threshold": 2, "recovery_threshold": 3, "pattern": "xx...",
+      "events": [[1, "opened"], [4, "resolved"]],
+      "final": {"status": "up", "failures": 0, "successes": 0}
+    },
+    {
+      "name": "one success short of recovery",
+      "failure_threshold": 2, "recovery_threshold": 3, "pattern": "xx..",
+      "events": [[1, "opened"]],
+      "final": {"status": "down", "failures": 0, "successes": 2}
+    },
+    {
+      "name": "flapping while down neither resolves nor reopens",
+      "failure_threshold": 3, "recovery_threshold": 3, "pattern": "xxx.x.x..x",
+      "events": [[2, "opened"]],
+      "final": {"status": "down", "failures": 1, "successes": 0}
+    },
+    {
+      "name": "thresholds of one react immediately",
+      "failure_threshold": 1, "recovery_threshold": 1, "pattern": "x.x.",
+      "events": [[0, "opened"], [1, "resolved"], [2, "opened"], [3, "resolved"]],
+      "final": {"status": "up", "failures": 0, "successes": 0}
+    },
+    {
+      "name": "a second incident after recovery",
+      "failure_threshold": 2, "recovery_threshold": 2, "pattern": "xx..xx..",
+      "events": [[1, "opened"], [3, "resolved"], [5, "opened"], [7, "resolved"]],
+      "final": {"status": "up", "failures": 0, "successes": 0}
+    },
+    {
+      "name": "a long outage opens only one incident",
+      "failure_threshold": 2, "recovery_threshold": 2, "pattern": "xxxxxxxx",
+      "events": [[1, "opened"]],
+      "final": {"status": "down", "failures": 8, "successes": 0}
+    },
+    {
+      "name": "a success resets the failure streak",
+      "failure_threshold": 3, "recovery_threshold": 2, "pattern": "xx.xxx",
+      "events": [[5, "opened"]],
+      "final": {"status": "down", "failures": 3, "successes": 0}
+    }
+  ]
+}

@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>uptime-lite — self-hosted uptime with a static status page</title>
+    <title>uptime-lite: self-hosted uptime checks with a static status page</title>
     <meta
       name="description"
-      content="HTTP and TCP checks, debounced incidents, Telegram and webhook alerts, SQLite history, and a generated static status page."
+      content="HTTP and TCP checks, debounced incident detection, Telegram and webhook alerts, SQLite history and a generated static status page."
     />
     <meta property="og:title" content="uptime-lite" />
     <meta
       property="og:description"
-      content="Self-hosted uptime monitor with debounced incidents and a static public status page."
+      content="Self-hosted uptime monitor with debounced incident detection and a static public status page."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://mohamedtaqysalmi.github.io/uptime-lite/" />
@@ -20,175 +20,337 @@
     <meta name="twitter:title" content="uptime-lite" />
     <meta
       name="twitter:description"
-      content="Self-hosted uptime monitor with debounced incidents and a static public status page."
+      content="Self-hosted uptime monitor with debounced incident detection and a static public status page."
     />
     <meta name="twitter:image" content="https://mohamedtaqysalmi.github.io/uptime-lite/og.svg" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="page.css" />
   </head>
   <body>
-    <a class="skip-link" href="#example">Skip to example status</a>
+    <a class="skip-link" href="#demo">Skip to the example status page</a>
+
     <header class="wrap site-header">
-      <div class="brand-row">
-        <span class="mark" aria-hidden="true"></span>
-        <strong>uptime-lite</strong>
-      </div>
-      <nav aria-label="Primary">
+      <a class="brand" href="./">
+        <img src="favicon.svg" alt="" width="28" height="28" />
+        uptime-lite
+      </a>
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#demo">Example page</a>
+        <a href="#debounce">Debounce demo</a>
+        <a href="#quickstart">Quickstart</a>
         <a href="https://github.com/mohamedtaqysalmi/uptime-lite">GitHub</a>
-        &nbsp;·&nbsp;
-        <a href="https://github.com/mohamedtaqysalmi">Profile</a>
-        &nbsp;·&nbsp;
-        <a href="https://www.linkedin.com/in/mohamedtaqysalmi">LinkedIn</a>
       </nav>
     </header>
 
-    <section class="wrap hero" aria-label="Introduction">
-      <p class="eyebrow">Python · SQLite · static HTML</p>
-      <h1 class="hero-brand">uptime<span>-lite</span></h1>
-      <p class="lede">
-        I built this because most uptime tools I tried either flapped on one failed probe or needed a
-        hosted account I did not want for small client sites. This one keeps history in SQLite,
-        opens incidents only after N failures in a row, and writes a public status page as plain
-        HTML.
-      </p>
-      <div class="cta-row">
-        <a class="btn btn-primary" href="#example">See example status</a>
-        <a class="btn btn-ghost" href="https://github.com/mohamedtaqysalmi/uptime-lite"
-          >Open the repo</a
-        >
-      </div>
-    </section>
-
     <main>
-      <section class="wrap section" id="example" aria-labelledby="example-title">
-        <h2 id="example-title">Example status page</h2>
+      <section class="wrap hero">
+        <p class="eyebrow">Python · SQLite · static HTML</p>
+        <h1>An uptime monitor that waits for a real outage before it alerts.</h1>
         <p class="lede">
-          Snapshot of what <code>uptime-lite status-page</code> emits. In production you regenerate
-          this from your database after checks run; this copy is checked into the site as a demo.
+          Most small-site monitors either alert on one dropped request or need a hosted account.
+          I wrote this to run on my own machine: it checks HTTP and TCP targets, opens an incident
+          only after several failures in a row, keeps history in SQLite and writes the public
+          status page as one plain HTML file.
         </p>
-        <iframe
-          class="status-frame"
-          title="Example status page"
-          src="status/index.html"
-          loading="lazy"
-        ></iframe>
-        <p class="muted">
-          Prefer a full tab?
-          <a href="status/index.html">Open the example status page</a>.
-        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#demo">See the status page</a>
+          <a class="btn" href="https://github.com/mohamedtaqysalmi/uptime-lite">View the code</a>
+        </div>
+        <dl class="facts">
+          <div>
+            <dt>release</dt>
+            <dd>v0.1.0</dd>
+          </div>
+          <div>
+            <dt>tests</dt>
+            <dd>160 Python, 10 JavaScript</dd>
+          </div>
+          <div>
+            <dt>coverage</dt>
+            <dd>88%</dd>
+          </div>
+          <div>
+            <dt>license</dt>
+            <dd>MIT</dd>
+          </div>
+        </dl>
       </section>
 
-      <section class="wrap section" aria-labelledby="problem-title">
-        <h2 id="problem-title">What problem it solves</h2>
-        <p class="lede">
-          You want a private probe that can alert you on Telegram and still publish a public page
-          without running a second web app. Debounce stops a single timeout from paging you at 3 a.m.
-        </p>
-        <ul class="plain-list">
-          <li>HTTP and TCP checks from YAML, validated before anything runs.</li>
-          <li>Incident state machine with failure and recovery thresholds.</li>
-          <li>Telegram bot and generic webhook alerts; tokens stay in env vars.</li>
-          <li>Static status HTML you can host anywhere, including GitHub Pages.</li>
-        </ul>
+      <section class="wrap section" id="demo" aria-labelledby="demo-title">
+        <div class="section-head">
+          <h2 id="demo-title">Example status page</h2>
+        </div>
+        <div class="section-body flow">
+          <p>
+            This is the file <code>uptime-lite status-page</code> wrote, embedded unchanged. The
+            check results behind it are made up by
+            <a
+              href="https://github.com/mohamedtaqysalmi/uptime-lite/blob/main/scripts/generate_example_status.py"
+              >a script</a
+            >
+            that feeds them through the real code, so the targets are documentation addresses and
+            <code>example.com</code>, and nothing here is a live service. One check has an open
+            incident and one has a resolved one, so you can see both.
+          </p>
+          <iframe
+            class="status-frame"
+            title="Example status page generated by uptime-lite"
+            src="status/index.html"
+          ></iframe>
+          <p class="hint">
+            <a href="status/index.html">Open the example in its own tab</a>. It is a single
+            self-contained file with no scripts.
+          </p>
+        </div>
       </section>
 
-      <section class="wrap section" aria-labelledby="quick-title">
-        <h2 id="quick-title">Quickstart</h2>
-        <pre class="code"><code id="quick-code">python -m venv .venv
-.venv\Scripts\activate
-pip install -e ".[dev]"
-copy examples\config.example.yaml config.yaml
-uptime-lite check -c config.yaml -d uptime.db --no-alerts
-uptime-lite status-page -c config.yaml -d uptime.db -o status</code></pre>
-        <button type="button" class="btn btn-ghost" id="copy-btn">Copy commands</button>
+      <section class="wrap section" id="debounce" aria-labelledby="debounce-title">
+        <div class="section-head">
+          <h2 id="debounce-title">Debounce demo</h2>
+        </div>
+        <div class="section-body flow">
+          <p>
+            A check goes down after N failures in a row and comes back after M passes in a row.
+            Set N and M, then send results one at a time or replay a pattern. A result of the
+            opposite kind resets the streak, which is why a flapping check stays quiet.
+          </p>
+          <p class="hint">
+            This is a JavaScript port of the Python state machine. Both run the same cases from
+            <a href="debounce-cases.json">debounce-cases.json</a> in the test suite, so they
+            cannot disagree without a test failing.
+          </p>
+          <div class="grid-2">
+            <div class="panel">
+              <div class="grid-2 settings">
+                <div>
+                  <label for="failure-threshold">Failures to open (N)</label>
+                  <input id="failure-threshold" type="number" min="1" max="10" value="3" />
+                </div>
+                <div>
+                  <label for="recovery-threshold">Passes to resolve (M)</label>
+                  <input id="recovery-threshold" type="number" min="1" max="10" value="2" />
+                </div>
+              </div>
+              <p class="label">Send a result</p>
+              <div class="actions">
+                <button class="btn" id="send-pass" type="button">Check passes</button>
+                <button class="btn" id="send-fail" type="button">Check fails</button>
+                <button class="btn btn-small" id="reset" type="button">Reset</button>
+              </div>
+              <p class="label" id="patterns-label">Or replay a pattern</p>
+              <div class="chips" id="patterns" role="group" aria-labelledby="patterns-label"></div>
+            </div>
+            <div class="panel">
+              <div class="readout" aria-live="polite">
+                <p id="state-line">State: UP</p>
+                <p id="counter"></p>
+              </div>
+              <p class="label" id="trail-label">
+                Results (P pass, F fail, boxed result changed the state)
+              </p>
+              <ol class="trail" id="trail" aria-labelledby="trail-label"></ol>
+              <p class="label">What would be alerted</p>
+              <ul class="events" id="events"></ul>
+            </div>
+          </div>
+          <noscript
+            ><p class="callout">The demo needs JavaScript. The rest of the page does not.</p></noscript
+          >
+        </div>
+      </section>
+
+      <section class="wrap section" aria-labelledby="works-title">
+        <div class="section-head">
+          <h2 id="works-title">What works</h2>
+        </div>
+        <div class="section-body flow">
+          <ul class="status">
+            <li>
+              <span class="tag tag-ok">works</span>
+              <span>HTTP and TCP checks from YAML. Config errors name the check and the field.</span>
+            </li>
+            <li>
+              <span class="tag tag-ok">works</span>
+              <span
+                >Debounced incidents. The streak is stored in SQLite, so a restart continues
+                it.</span
+              >
+            </li>
+            <li>
+              <span class="tag tag-ok">works</span>
+              <span>Static status page, generated from the database.</span>
+            </li>
+            <li>
+              <span class="tag tag-partial">partial</span>
+              <span
+                >Telegram and webhook alerts. Tested with a fake HTTP client, never against the real
+                Telegram API in CI.</span
+              >
+            </li>
+            <li>
+              <span class="tag tag-no">not done</span>
+              <span>
+                A scheduler loop. Today you run <code>uptime-lite check</code> from cron or Task
+                Scheduler.
+                <a href="https://github.com/mohamedtaqysalmi/uptime-lite/issues/4">Issue 4</a>
+              </span>
+            </li>
+            <li>
+              <span class="tag tag-no">not done</span>
+              <span>
+                Alert retries, and a Docker image.
+                <a href="https://github.com/mohamedtaqysalmi/uptime-lite/issues/9">Issue 9</a>,
+                <a href="https://github.com/mohamedtaqysalmi/uptime-lite/issues/5">issue 5</a>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="wrap section" id="quickstart" aria-labelledby="quick-title">
+        <div class="section-head">
+          <h2 id="quick-title">Quickstart</h2>
+        </div>
+        <div class="section-body flow">
+          <div class="code">
+            <pre id="quickstart-code"><code>git clone https://github.com/mohamedtaqysalmi/uptime-lite
+cd uptime-lite
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .
+cp examples/config.example.yaml config.yaml
+uptime-lite check -c config.yaml --no-alerts
+uptime-lite status-page -c config.yaml -o status</code></pre>
+            <button class="btn btn-small copy" type="button" data-copy="quickstart-code">
+              Copy
+            </button>
+          </div>
+          <p class="hint">
+            The example config points at <code>example.com</code> and documentation addresses, so
+            some checks will fail. Edit the targets to something you own.
+          </p>
+          <div class="badges">
+            <a href="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/ci.yml"
+              ><img
+                alt="CI status"
+                width="110"
+                height="20"
+                src="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/ci.yml/badge.svg"
+            /></a>
+            <a href="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/codeql.yml"
+              ><img
+                alt="CodeQL status"
+                width="110"
+                height="20"
+                src="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/codeql.yml/badge.svg"
+            /></a>
+          </div>
+        </div>
       </section>
 
       <section class="wrap section" aria-labelledby="how-title">
-        <h2 id="how-title">How it works</h2>
-        <p class="lede">
-          Each check result is stored, then fed into a pure evaluate() call. Only when a streak
-          crosses the threshold does an incident open or resolve, and only then do alerts fire.
-        </p>
-        <pre class="code diagram" aria-label="Architecture diagram">config.yaml
+        <div class="section-head">
+          <h2 id="how-title">How it works</h2>
+        </div>
+        <div class="section-body flow">
+          <p>
+            Every result is stored, then passed to a pure function that returns the new state and,
+            when a threshold is crossed, an <code>opened</code> or <code>resolved</code> event.
+            Only those events trigger alerts.
+          </p>
+          <pre
+            class="diagram"
+            role="img"
+            aria-label="config.yaml feeds uptime-lite check, which writes results, state and incidents to SQLite and sends Telegram or webhook alerts on state changes. uptime-lite status-page reads SQLite and writes index.html."
+          >
+config.yaml
     │
     ▼
-uptime-lite check ──► SQLite (results, state, incidents)
-    │                        │
-    │                        ├──► Telegram / webhook (on transition)
-    │                        │
-    └── status-page ─────────┘──► index.html</pre>
-      </section>
-
-      <section class="wrap section" aria-labelledby="limits-title">
-        <h2 id="limits-title">Honest limits</h2>
-        <ul class="plain-list">
-          <li>No long-running scheduler yet; use cron/Task Scheduler with <code>check</code>.</li>
-          <li>Single-node SQLite. Fine for tens of checks; not a multi-region mesh.</li>
-          <li>Resource numbers in the docs use fake transports; real RTT is yours to measure.</li>
-          <li>Pages demo is a static snapshot, not a live feed from a running monitor.</li>
-        </ul>
+uptime-lite check ──► SQLite: results, state, incidents
+    │                      │
+    │                      └──► uptime-lite status-page ──► index.html
+    │
+    └──► Telegram / webhook, only when an incident opens or resolves</pre
+          >
+        </div>
       </section>
 
       <section class="wrap section" aria-labelledby="built-title">
-        <h2 id="built-title">How I built it</h2>
-        <ol class="plain-list">
-          <li>Debounce as a pure function so tests can drive a fake clock.</li>
-          <li>One SQLite transaction per result so state and incidents cannot diverge.</li>
-          <li>Reject bot tokens in YAML; read them from the environment at send time.</li>
-          <li>Generate HTML instead of serving a live API for the public page.</li>
-          <li>Ship one-shot CLI first; interval loop is tracked for later.</li>
-        </ol>
-        <p class="muted">
-          Longer notes live in
-          <a href="https://github.com/mohamedtaqysalmi/uptime-lite/blob/main/docs/architecture.md"
-            >docs/architecture.md</a
-          >.
-        </p>
+        <div class="section-head">
+          <h2 id="built-title">How I built it</h2>
+        </div>
+        <div class="section-body">
+          <div class="notes">
+            <article>
+              <h3>The debounce is a pure function</h3>
+              <p>
+                It takes the old state, the result and a timestamp, and returns the new state. No
+                clock, no database, so the tests drive it with exact sequences and the demo above
+                could be ported and checked against the same cases.
+              </p>
+            </article>
+            <article>
+              <h3>One transaction per result</h3>
+              <p>
+                The result, the new state and the incident row are written together. A crash
+                between them cannot leave an open incident with no state, or the reverse.
+              </p>
+            </article>
+            <article>
+              <h3>Tokens only from the environment</h3>
+              <p>
+                The config loader rejects a bot token written in YAML, so a config file is safe to
+                commit. The Telegram token is read from <code>TELEGRAM_BOT_TOKEN</code> when an
+                alert is sent.
+              </p>
+            </article>
+            <article>
+              <h3>A file, not a web app, for the public page</h3>
+              <p>
+                The status page is generated HTML with no scripts. It can sit on any static host,
+                and the monitor never has to be reachable from the internet.
+              </p>
+            </article>
+          </div>
+        </div>
       </section>
 
-      <section class="wrap section" aria-labelledby="ci-title">
-        <h2 id="ci-title">Tests and CI</h2>
-        <p class="badges">
-          <img
-            alt="CI status"
-            src="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/ci.yml/badge.svg"
-          />
-          <img
-            alt="CodeQL"
-            src="https://github.com/mohamedtaqysalmi/uptime-lite/actions/workflows/codeql.yml/badge.svg"
-          />
-        </p>
-        <p class="lede">
-          Coverage gate is 85% branch coverage. The incident machine is the focus of the suite;
-          alerts use injectable HTTP posters so tests never call Telegram.
-        </p>
-      </section>
-
-      <section class="wrap section" aria-labelledby="contrib-title">
-        <h2 id="contrib-title">Contribute</h2>
-        <p class="lede">
-          Small fixes welcome. Larger ideas: open an issue first. See
-          <a href="https://github.com/mohamedtaqysalmi/uptime-lite/blob/main/CONTRIBUTING.md"
-            >CONTRIBUTING.md</a
-          >.
-        </p>
+      <section class="wrap section" aria-labelledby="limits-title">
+        <div class="section-head">
+          <h2 id="limits-title">Limits and roadmap</h2>
+        </div>
+        <div class="section-body flow">
+          <ul>
+            <li>One node, one SQLite file. It is not a multi-region monitor.</li>
+            <li>Results are never pruned yet, so the database grows without bound.</li>
+            <li>The example status page above is a snapshot, not a feed from a running monitor.</li>
+          </ul>
+          <p>
+            The plan is in the
+            <a href="https://github.com/mohamedtaqysalmi/uptime-lite/issues">open issues</a>. To
+            contribute, start with
+            <a href="https://github.com/mohamedtaqysalmi/uptime-lite/blob/main/CONTRIBUTING.md"
+              >CONTRIBUTING.md</a
+            >.
+          </p>
+        </div>
       </section>
     </main>
 
     <footer class="wrap site-footer">
       <p>
-        Built by
-        <a href="https://github.com/mohamedtaqysalmi">Mohamed-Taqy Salmi</a>
-        · MIT ·
-        <a href="https://github.com/mohamedtaqysalmi/uptime-lite">Source</a>
+        Built by <a href="https://github.com/mohamedtaqysalmi">Mohamed-Taqy Salmi</a> ·
+        <a href="https://www.linkedin.com/in/mohamedtaqysalmi">LinkedIn</a>
+      </p>
+      <p>
+        MIT licensed ·
+        <a href="https://github.com/mohamedtaqysalmi/uptime-lite">Source on GitHub</a>
       </p>
     </footer>
-    <script src="main.js"></script>
+
+    <script src="base.js" defer></script>
+    <script src="debounce.js" defer></script>
+    <script src="demo.js" defer></script>
   </body>
 </html>
