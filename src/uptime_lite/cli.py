@@ -72,6 +72,11 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 2
 
+    if args.command == "status-page" and not args.db.is_file():
+        # Opening it would create an empty database and publish a page that says nothing ran.
+        print(f"database not found: {args.db} (run `uptime-lite check` first)", file=sys.stderr)
+        return 2
+
     storage = Storage(args.db)
     try:
         if args.command == "check":

@@ -205,6 +205,11 @@ def _validate_check(index: int, raw: Any, errors: list[str]) -> CheckConfig | No
             )
         ):
             problem("expected_status", f"must be a non-empty list of HTTP codes, got {value!r}")
+        elif any(300 <= s < 400 for s in value):
+            problem(
+                "expected_status",
+                "3xx codes can never match because redirects are followed, got " + repr(value),
+            )
         else:
             expected_status = tuple(value)
 
@@ -270,7 +275,11 @@ def _validate_telegram(raw: Any, errors: list[str]) -> TelegramConfig | None:
     if "bot_token" in raw or "token" in raw:
         return None
     api_base = raw.get("api_base", "https://api.telegram.org")
-    if not isinstance(api_base, str) or not api_base.startswith("https://"):
+    if (
+        not isinstance(api_base, str)
+        or not api_base.startswith("https://")
+        or any(c.isspace() for c in api_base)
+    ):
         errors.append(f"alerts.telegram: field 'api_base': must be an https URL, got {api_base!r}")
         return None
     return TelegramConfig(chat_id=chat_id.strip(), api_base=api_base.rstrip("/"))

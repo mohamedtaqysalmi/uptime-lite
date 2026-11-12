@@ -38,5 +38,14 @@ def test_status_page_command(tmp_path: Path) -> None:
     assert "Demo Status" in text
 
 
+def test_status_page_refuses_a_missing_database(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(MINIMAL, encoding="utf-8")
+    db = tmp_path / "typo.db"
+    assert main(["status-page", "-c", str(cfg), "-d", str(db), "-o", str(tmp_path / "s")]) == 2
+    assert not db.exists()
+    assert not (tmp_path / "s").exists()
+
+
 def test_check_command_with_injected_failure_via_bad_config_path(tmp_path: Path) -> None:
     assert main(["check", "-c", str(tmp_path / "missing.yaml")]) == 2

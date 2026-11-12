@@ -219,3 +219,18 @@ def test_split_host_port(target: str, expected: tuple[str, int]) -> None:
 def test_split_host_port_rejects_empty_bracketed_host() -> None:
     with pytest.raises(ValueError, match="host:port"):
         split_host_port("[]:80")
+
+
+def test_expected_status_rejects_redirect_codes() -> None:
+    errors = errors_for(
+        "checks:\n  - {name: a, type: http, target: 'http://e.com', expected_status: [301]}\n"
+    )
+    assert "redirects are followed" in errors[0]
+
+
+def test_telegram_api_base_must_not_contain_whitespace() -> None:
+    errors = errors_for(
+        "checks:\n  - {name: a, type: tcp, target: 'h:1'}\n"
+        "alerts:\n  telegram: {chat_id: '1', api_base: 'https://x.example/a b'}\n"
+    )
+    assert "api_base" in errors[0]

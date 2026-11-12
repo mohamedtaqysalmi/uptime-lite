@@ -187,6 +187,15 @@ class Storage:
         rows = self._conn.execute(query + " ORDER BY started_at, id", params).fetchall()
         return [_incident_from_row(r) for r in rows]
 
+    def recent_incidents(self, check_name: str, limit: int) -> list[Incident]:
+        """Newest first."""
+        rows = self._conn.execute(
+            "SELECT * FROM incidents WHERE check_name = ?"
+            " ORDER BY started_at DESC, id DESC LIMIT ?",
+            (check_name, limit),
+        ).fetchall()
+        return [_incident_from_row(r) for r in rows]
+
     def open_incidents(self) -> list[Incident]:
         rows = self._conn.execute(
             "SELECT * FROM incidents WHERE resolved_at IS NULL ORDER BY started_at, id"

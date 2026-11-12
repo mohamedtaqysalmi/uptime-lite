@@ -26,8 +26,7 @@ def collect_snapshots(config: Config, storage: Storage, history: int = 5) -> lis
     snapshots: list[CheckSnapshot] = []
     for check in config.checks:
         state = storage.load_state(check.name)
-        incidents = storage.incidents(check.name)
-        recent = tuple(reversed(incidents[-history:])) if incidents else ()
+        recent = tuple(storage.recent_incidents(check.name, history))
         snapshots.append(
             CheckSnapshot(
                 check=check,
@@ -173,7 +172,10 @@ def write_status_page(
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = out / "index.html"
-    path.write_text(html_text, encoding="utf-8")
+    # Write then rename, so a web server never serves a half-written page.
+    tmp = out / "index.html.tmp"
+    tmp.write_text(html_text, encoding="utf-8")
+    tmp.replace(path)
     return path
 
 

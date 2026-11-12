@@ -45,13 +45,11 @@ Out of scope for this tag: interval scheduler daemon, Docker image, PyPI publish
 
 - No interval scheduler; cron must call `check`.
 - Alert channels not exercised against real Telegram/webhook in CI.
-- Lighthouse scores not recorded until after Pages is live (fill in below).
+- Lighthouse scores not recorded (see below).
 
-## Lighthouse (fill after deploy)
+## Lighthouse
 
-Date: _pending_  
-URL: https://mohamedtaqysalmi.github.io/uptime-lite/  
-Performance / Accessibility / Best Practices / SEO: _pending_
+Not measured yet ([issue 11](https://github.com/mohamedtaqysalmi/uptime-lite/issues/11)).
 
 ## Sign-off
 

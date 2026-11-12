@@ -71,3 +71,26 @@ def test_write_status_page_creates_index(tmp_path: Path) -> None:
         encoding="utf-8"
     )
     storage.close()
+
+
+def test_write_replaces_the_page_without_leaving_temp_files(tmp_path: Path) -> None:
+    storage = Storage(tmp_path / "t.db")
+    out = tmp_path / "public"
+    write_status_page(_config("web"), storage, out, generated_at=T0)
+    first = (out / "index.html").read_text(encoding="utf-8")
+    write_status_page(_config("web"), storage, out, generated_at=T0 + timedelta(hours=1))
+    assert [p.name for p in out.iterdir()] == ["index.html"]
+    assert (out / "index.html").read_text(encoding="utf-8") != first
+    storage.close()
+
+
+def test_history_shows_only_the_newest_incidents(tmp_path: Path) -> None:
+    storage = Storage(tmp_path / "t.db")
+    with storage.transaction():
+        for hour in range(4):
+            started = T0 + timedelta(hours=hour)
+            storage.open_incident("web", started, f"error-{hour}")
+            storage.resolve_incident("web", started + timedelta(minutes=5))
+    (snapshot,) = collect_snapshots(_config("web"), storage, history=2)
+    assert [i.error for i in snapshot.recent_incidents] == ["error-3", "error-2"]
+    storage.close()

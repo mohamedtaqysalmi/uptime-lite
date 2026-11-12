@@ -231,3 +231,15 @@ def test_default_tcp_transport_connects_and_refuses(server: http.server.HTTPServ
     closed.close()
     with pytest.raises(OSError, match=r"."):
         default_tcp_transport("127.0.0.1", port, 2)
+
+
+@pytest.mark.parametrize(
+    ("kind", "target"),
+    [("tcp", "a" * 70 + ".example.com:80"), ("http", "http://a..b/"), ("tcp", "a..b:80")],
+)
+def test_hostnames_the_stdlib_cannot_encode_fail_the_check_instead_of_raising(
+    kind: str, target: str
+) -> None:
+    result = run_check(http_check(name="x", type=kind, target=target))
+    assert not result.ok
+    assert result.error is not None

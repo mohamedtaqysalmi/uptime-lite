@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A hostname the standard library cannot encode (for example a label over 63 characters) crashed `uptime-lite check`; it now fails that check.
+- An unexpected error in one check no longer stops the remaining checks in the run.
+- Alert delivery caught only `OSError`. Other errors from the HTTP client escaped, skipped the second channel, and could print the Telegram bot token in a traceback.
+- Alert times are UTC instead of the machine's local timezone.
+- `expected_status` with a 3xx code could never match because redirects are followed; the config now rejects it.
+- `status-page` created an empty database when `-d` pointed at a missing file; it now exits with an error.
+- The status page is written atomically, and only the newest incidents are read from the database.
+- Resource usage is now measured on a real `check` run (memory, CPU, method and machine documented), replacing numbers taken with stub transports.
+
+### Removed
+
+- `IncidentTracker` moved into the tests; nothing in the package used it.
+
 ## [0.1.0] - 2026-11-11
 
 ### Added

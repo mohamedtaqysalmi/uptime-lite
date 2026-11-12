@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
+
 from uptime_lite.alerts import Alerter
-from uptime_lite.checks import CheckResult, run_check
+from uptime_lite.checks import CheckResult, run_check, utc_now
 from uptime_lite.config import CheckConfig, Config
 from uptime_lite.incidents import Transition, TransitionKind, evaluate
 from uptime_lite.storage import Storage
+
+logger = logging.getLogger(__name__)
 
 
 def process_result(storage: Storage, check: CheckConfig, result: CheckResult) -> Transition | None:
@@ -52,7 +56,13 @@ def run_once(
     """Run every check once, persist results, and fire alerts on transitions."""
     outcomes: list[tuple[CheckConfig, CheckResult, Transition | None]] = []
     for check in config.checks:
-        result = run_check(check)
+        try:
+            result = run_check(check)
+        except Exception as exc:
+            # One check hitting an unexpected error must not stop the others from running.
+            logger.exception("check %r raised an unexpected error", check.name)
+            error = f"internal error: {type(exc).__name__}"
+            result = CheckResult(check.name, False, utc_now(), error=error)
         transition = handle_result(storage, check, result, alerter)
         outcomes.append((check, result, transition))
     return outcomes

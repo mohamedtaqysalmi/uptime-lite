@@ -4,7 +4,7 @@ Short decisions for v0.1.0. Each ADR is one choice and what it costs.
 
 ## ADR-001: Debounce in a pure function, persist after
 
-**Decision.** Incident open/resolve lives in `incidents.evaluate` with an injected clock. `monitor.process_result` wraps it in one SQLite transaction with the result row and check state.
+**Decision.** Incident open/resolve lives in `incidents.evaluate`, which takes the result's timestamp as an argument and never reads a clock. `monitor.process_result` wraps it in one SQLite transaction with the result row and check state.
 
 **Why.** The flapping logic is the hard part; keeping it free of I/O makes it easy to test with a fake clock and out-of-order timestamps.
 
@@ -30,9 +30,9 @@ Short decisions for v0.1.0. Each ADR is one choice and what it costs.
 
 **Decision.** Checks and alert posts use `urllib` / `socket`. Transports are injectable for tests.
 
-**Why.** One dependency today (PyYAML). Interview clones stay small.
+**Why.** One dependency today (PyYAML). Installs stay small.
 
-**Trade-off.** No connection pooling, no HTTP/2, no fancy retry policy. Timeouts are hard deadlines on the transport call.
+**Trade-off.** No connection pooling, no HTTP/2, no fancy retry policy. Timeouts are socket timeouts, not a wall-clock limit: they apply per operation and do not cover DNS resolution.
 
 ## ADR-005: One-shot CLI first, interval scheduler later
 
