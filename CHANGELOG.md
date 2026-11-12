@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Pages site rebuilt on the shared plain style, with the real generated status page embedded and an interactive debounce demo.
+- Generated status page restyled: plain bordered table, light and dark, readable at 360px, all times in UTC. A check that has never run shows "No data yet" instead of "Up".
+
+### Added
+
+- `scripts/generate_example_status.py` regenerates `site/status/index.html` from synthetic results through the real code.
+- Debounce cases shared between the Python tests and the demo's JavaScript port (`site/debounce-cases.json`).
+
 ## [0.1.0] - 2026-11-11
 
 ### Added

@@ -1,0 +1,60 @@
+/* uptime-lite: layout for the example status frame and the debounce demo only. */
+
+.status-frame {
+  display: block;
+  width: 100%;
+  height: 40rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.settings {
+  margin-bottom: 0.9rem;
+}
+.panel .actions {
+  margin-top: 0;
+  margin-bottom: 0.9rem;
+}
+.panel .chips {
+  margin-bottom: 0.9rem;
+}
+
+.readout {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.9rem;
+}
+
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-height: 1.9rem;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  list-style: none;
+}
+.trail li {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin: 0;
+  border: 1px solid var(--line-soft);
+  font: 700 var(--step--1) / 1 var(--mono);
+}
+.trail .pass {
+  color: var(--ok);
+}
+.trail .fail {
+  color: var(--bad);
+}
+.trail .mark {
+  border: 2px solid var(--ink);
+}
+
+.events {
+  margin: 0;
+  font-size: var(--step--1);
+}

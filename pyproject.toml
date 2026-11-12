@@ -52,6 +52,10 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "RUF", "PT"]
 
+[tool.ruff.lint.per-file-ignores]
+# The embedded stylesheet is easier to read with one rule per line.
+"src/uptime_lite/statuspage.py" = ["E501"]
+
 [tool.mypy]
 strict = true
 files = ["src", "tests"]
