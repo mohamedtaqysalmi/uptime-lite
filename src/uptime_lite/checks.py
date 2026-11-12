@@ -73,7 +73,8 @@ def run_http_check(
     start = timer()
     try:
         status = transport(check.target, check.timeout)
-    except (OSError, http.client.HTTPException) as exc:
+    # ValueError covers hostnames the stdlib refuses to encode (e.g. a label over 63 chars).
+    except (OSError, http.client.HTTPException, ValueError) as exc:
         return CheckResult(check.name, False, at, error=describe_error(exc))
     latency = (timer() - start) * 1000
     if status_is_ok(status, check.expected_status):
@@ -99,7 +100,7 @@ def run_tcp_check(
     start = timer()
     try:
         transport(host, port, check.timeout)
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         return CheckResult(check.name, False, at, error=describe_error(exc))
     return CheckResult(check.name, True, at, latency_ms=(timer() - start) * 1000)
 

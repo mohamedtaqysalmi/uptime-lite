@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from uptime_lite.incidents import Transition, TransitionKind
 
@@ -111,7 +111,9 @@ class Alerter:
         headers = {"Content-Type": "application/json", "User-Agent": "uptime-lite"}
         try:
             status, raw = self._post(url, headers, body, self._timeout)
-        except OSError as exc:
+        except Exception as exc:
+            # Only the exception type is logged: messages from urllib can contain the URL,
+            # and the Telegram URL contains the bot token.
             logger.error("telegram alert failed: %s", type(exc).__name__)
             return
         if status >= 400:
@@ -129,7 +131,7 @@ class Alerter:
         body = json.dumps(payload).encode("utf-8")
         try:
             status, raw = self._post(cfg.url, headers, body, cfg.timeout)
-        except OSError as exc:
+        except Exception as exc:
             logger.error("webhook alert failed: %s", type(exc).__name__)
             return
         if status >= 400:
@@ -138,4 +140,4 @@ class Alerter:
 
 
 def _fmt(value: datetime) -> str:
-    return value.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    return value.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")

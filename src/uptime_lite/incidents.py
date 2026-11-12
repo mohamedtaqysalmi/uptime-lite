@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import StrEnum
@@ -119,31 +118,3 @@ def _when_down(
     return CheckState(status=Status.UP, last_at=at), Transition(
         TransitionKind.RESOLVED, at=at, started_at=started
     )
-
-
-class IncidentTracker:
-    """Holds the state of one check. `clock` supplies the time when none is given."""
-
-    def __init__(
-        self,
-        failure_threshold: int,
-        recovery_threshold: int,
-        clock: Callable[[], datetime],
-        state: CheckState | None = None,
-    ) -> None:
-        if failure_threshold < 1 or recovery_threshold < 1:
-            raise ValueError("thresholds must be >= 1")
-        self.failure_threshold = failure_threshold
-        self.recovery_threshold = recovery_threshold
-        self.state = state or CheckState()
-        self._clock = clock
-
-    def record(self, ok: bool, at: datetime | None = None) -> Transition | None:
-        self.state, transition = evaluate(
-            self.state,
-            ok,
-            at if at is not None else self._clock(),
-            self.failure_threshold,
-            self.recovery_threshold,
-        )
-        return transition
